@@ -20,7 +20,6 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.13.1
 
-# 图标配置保留，防止下次想改找不到地方
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
@@ -31,3 +30,6 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  # ✅✅✅ 这里是新增的配置，注意缩进！ ✅✅✅
+  assets:
+    - assets/images/banner.png
