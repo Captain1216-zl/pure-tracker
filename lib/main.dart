@@ -57,7 +57,130 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
   void initState() {
     super.initState();
     _loadData();
+    // 在页面构建完成后检查是否需要弹窗
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkFirstLaunch();
+    });
   }
+
+  // --- 弹窗逻辑开始 ---
+
+  Future<void> _checkFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    // 检查标记，默认为 true (代表是第一次)
+    // 如果你已经在开发调试中运行过，可能需要手动清除数据才能看到效果，或者修改这里的 key 名字测试
+    bool isFirst = prefs.getBool('is_first_launch_v1') ?? true;
+
+    if (isFirst) {
+      _showIntroDialog();
+    }
+  }
+
+  // 标记为已读，不再弹出
+  Future<void> _markAsLaunched() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_first_launch_v1', false);
+  }
+
+  // 弹窗1：功能介绍
+  void _showIntroDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // 必须点击按钮才能关闭
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            height: 300,
+            padding: const EdgeInsets.all(20),
+            child: Stack(
+              children: [
+                // 右上角跳过按钮
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context); // 关闭当前
+                      _showSkipConfirmDialog(); // 显示下一个
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Text("跳过", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ),
+                  ),
+                ),
+                
+                // 中间内容
+                const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.touch_app, size: 50, color: Colors.deepPurple),
+                      SizedBox(height: 20),
+                      Text(
+                        "点击日期记录飞了一次\n长按删除记录\n多点几次试试呢",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 底部小字
+                const Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Text(
+                    "删除记录不代表没飞哦宝贝",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 弹窗2：跳过确认
+  void _showSkipConfirmDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("提示"),
+          content: const Text("跳过介绍就是跳过人生--袁神"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // 关闭当前
+                _showIntroDialog(); // 返回上一个
+              },
+              child: const Text("返回"),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context); // 关闭弹窗
+                _markAsLaunched(); // 记录已完成引导
+              },
+              child: const Text("坚持跳过"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  // --- 弹窗逻辑结束 ---
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -163,40 +286,34 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                       _focusedDay = focusedDay;
                     });
                   },
-                  // === 核心修改区域 ===
                   calendarBuilders: CalendarBuilders(
-                    // 自定义“已打卡”的样式
                     selectedBuilder: (context, date, events) {
                       int count = _getCount(date);
                       return Container(
-                        // 1. 去掉了 margin，让圆圈变大填满格子
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: colorScheme.primary, 
                           shape: BoxShape.circle,
                         ),
-                        // 2. 改用 Column 垂直排列，让数字清晰展示
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min, // 紧凑包裹
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // 日期数字，加大字号
                             Text(
                               '${date.day}',
                               style: TextStyle(
                                 color: colorScheme.onPrimary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 20, // 更大的字体
-                                height: 1.0, // 紧凑行高
+                                fontSize: 20, 
+                                height: 1.0,
                               ),
                             ),
-                            // 次数显示，只有大于1次才显示，加大字号清晰展示
                             if (count > 1)
                               Text(
                                 "×$count",
                                 style: TextStyle(
                                   color: colorScheme.onPrimary.withOpacity(0.9),
-                                  fontSize: 14, // 清晰的字体大小
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -204,7 +321,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                         ),
                       );
                     },
-                    // 今天的默认样式（保持不变）
                     todayBuilder: (context, date, events) {
                       return Container(
                         alignment: Alignment.center,
@@ -216,7 +332,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                       );
                     },
                   ),
-                  // =================
                 ),
               ),
             ),
