@@ -45,7 +45,6 @@ class TrackerHomePage extends StatefulWidget {
 }
 
 class _TrackerHomePageState extends State<TrackerHomePage> {
-  // 核心数据结构：Map<日期, 次数>
   final Map<DateTime, int> _dayCounts = LinkedHashMap<DateTime, int>(
     equals: isSameDay,
     hashCode: (DateTime key) => key.day * 1000000 + key.month * 10000 + key.year,
@@ -60,11 +59,8 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
     _loadData();
   }
 
-  // 加载并自动迁移旧数据
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // 1. 尝试读取新的 Map 格式数据
     final String? jsonMap = prefs.getString('day_counts_map');
     if (jsonMap != null) {
       Map<String, dynamic> decoded = jsonDecode(jsonMap);
@@ -74,20 +70,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
           _dayCounts[DateTime.parse(key)] = value as int;
         });
       });
-    } else {
-      // 2. 如果没有新数据，检查是否有旧版本(List)的数据
-      // 【修复点】这里改成了 getStringList
-      final List<String>? oldList = prefs.getStringList('tracked_dates');
-      if (oldList != null) {
-        setState(() {
-          for (var dateStr in oldList) {
-            // 旧数据默认为 1 次
-            _dayCounts[DateTime.parse(dateStr)] = 1;
-          }
-        });
-        _saveData(); // 保存为新格式
-        prefs.remove('tracked_dates'); // 删除旧格式
-      }
     }
   }
 
@@ -109,7 +91,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
     return _dayCounts[key]!;
   }
 
-  // 点击：次数 +1
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       _focusedDay = focusedDay;
@@ -120,13 +101,11 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
     });
   }
 
-  // 长按：清零
   void _onDayLongPressed(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       if (_getCount(selectedDay) > 0) {
         _dayCounts.removeWhere((key, value) => isSameDay(key, selectedDay));
         _saveData();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已清空该日记录'), duration: Duration(milliseconds: 500)));
       }
     });
   }
@@ -167,7 +146,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                   lastDay: DateTime.utc(2030, 12, 31),
                   focusedDay: _focusedDay,
                   calendarFormat: _calendarFormat,
-                  
                   headerStyle: const HeaderStyle(
                     titleCentered: true, 
                     formatButtonVisible: false,
@@ -177,7 +155,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                     weekdayStyle: TextStyle(fontWeight: FontWeight.bold),
                     weekendStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
                   ),
-
                   selectedDayPredicate: (day) => _getCount(day) > 0,
                   onDaySelected: _onDaySelected,
                   onDayLongPressed: _onDayLongPressed,
@@ -186,47 +163,50 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                       _focusedDay = focusedDay;
                     });
                   },
-
+                  // === 核心修改区域 ===
                   calendarBuilders: CalendarBuilders(
+                    // 自定义“已打卡”的样式
                     selectedBuilder: (context, date, events) {
                       int count = _getCount(date);
                       return Container(
-                        margin: const EdgeInsets.all(4.0),
+                        // 1. 去掉了 margin，让圆圈变大填满格子
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: colorScheme.primary, 
                           shape: BoxShape.circle,
                         ),
-                        child: Stack(
-                          alignment: Alignment.center,
+                        // 2. 改用 Column 垂直排列，让数字清晰展示
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min, // 紧凑包裹
                           children: [
+                            // 日期数字，加大字号
                             Text(
                               '${date.day}',
                               style: TextStyle(
                                 color: colorScheme.onPrimary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 20, // 更大的字体
+                                height: 1.0, // 紧凑行高
                               ),
                             ),
+                            // 次数显示，只有大于1次才显示，加大字号清晰展示
                             if (count > 1)
-                              Positioned(
-                                right: 8,
-                                bottom: 4,
-                                child: Text(
-                                  "×$count",
-                                  style: TextStyle(
-                                    color: colorScheme.onPrimary.withOpacity(0.9),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                              Text(
+                                "×$count",
+                                style: TextStyle(
+                                  color: colorScheme.onPrimary.withOpacity(0.9),
+                                  fontSize: 14, // 清晰的字体大小
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                           ],
                         ),
                       );
                     },
+                    // 今天的默认样式（保持不变）
                     todayBuilder: (context, date, events) {
                       return Container(
-                        margin: const EdgeInsets.all(4.0),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           border: Border.all(color: colorScheme.primary, width: 1.5),
@@ -236,6 +216,7 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                       );
                     },
                   ),
+                  // =================
                 ),
               ),
             ),
