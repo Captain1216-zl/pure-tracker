@@ -9,19 +9,27 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # 原有的依赖
   table_calendar: ^3.0.9
   shared_preferences: ^2.2.0
   intl: ^0.19.0
-  # 新增功能的依赖
   dynamic_color: ^1.7.0
-  # 修复点：不写版本号，让 Flutter 自动查找最合适的版本
-  webdav_client: 
+  webdav_client: # 不指定版本号，解决编译报错
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  # === 图标生成工具 ===
+  flutter_launcher_icons: ^0.13.1
+
+# === 图标具体设置 ===
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "icon.png" # 对应你刚才上传的文件名
+  min_sdk_android: 21
+  adaptive_icon_background: "#ffffff" # 安卓图标背景色(白色)
+  adaptive_icon_foreground: "icon.png"
 
 flutter:
   uses-material-design: true
