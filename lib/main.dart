@@ -45,7 +45,7 @@ class TrackerHomePage extends StatefulWidget {
 }
 
 class _TrackerHomePageState extends State<TrackerHomePage> {
-  // 核心数据结构变化：Map<日期, 次数>
+  // 核心数据结构：Map<日期, 次数>
   final Map<DateTime, int> _dayCounts = LinkedHashMap<DateTime, int>(
     equals: isSameDay,
     hashCode: (DateTime key) => key.day * 1000000 + key.month * 10000 + key.year,
@@ -75,12 +75,13 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
         });
       });
     } else {
-      // 2. 如果没有新数据，检查是否有旧版本(List)的数据，进行迁移
-      final List<String>? oldList = prefs.getString('tracked_dates');
+      // 2. 如果没有新数据，检查是否有旧版本(List)的数据
+      // 【修复点】这里改成了 getStringList
+      final List<String>? oldList = prefs.getStringList('tracked_dates');
       if (oldList != null) {
         setState(() {
           for (var dateStr in oldList) {
-            // 旧数据只有“有”和“无”，所以次数默认为 1
+            // 旧数据默认为 1 次
             _dayCounts[DateTime.parse(dateStr)] = 1;
           }
         });
@@ -92,7 +93,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    // 将 Map 序列化为 JSON 字符串存储
     Map<String, int> stringKeyMap = {};
     _dayCounts.forEach((key, value) {
       stringKeyMap[key.toIso8601String()] = value;
@@ -100,12 +100,10 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
     await prefs.setString('day_counts_map', jsonEncode(stringKeyMap));
   }
 
-  // 获取某一天的次数，默认为 0
   int _getCount(DateTime day) {
-    // 查找 Map 中是否有这一天 (忽略时分秒)
     DateTime? key = _dayCounts.keys.firstWhere(
       (k) => isSameDay(k, day), 
-      orElse: () => DateTime(0) // 返回一个无效日期作为标记
+      orElse: () => DateTime(0)
     );
     if (key.year == 0) return 0;
     return _dayCounts[key]!;
@@ -116,11 +114,7 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
     setState(() {
       _focusedDay = focusedDay;
       int currentCount = _getCount(selectedDay);
-      // 更新 Map：如果 Key 存在则更新，不存在则新增
-      // 必须使用已经在 Map 中的 Key 或者新的标准化 Key，这里简化逻辑直接覆盖
-      // 先移除旧的 Key (为了保证 Key 的唯一性，虽然 Hash 应该处理了)
       DateTime key = _dayCounts.keys.firstWhere((k) => isSameDay(k, selectedDay), orElse: () => selectedDay);
-      
       _dayCounts[key] = currentCount + 1;
       _saveData();
     });
@@ -130,7 +124,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
   void _onDayLongPressed(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       if (_getCount(selectedDay) > 0) {
-        // 找到对应的 Key 并移除
         _dayCounts.removeWhere((key, value) => isSameDay(key, selectedDay));
         _saveData();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已清空该日记录'), duration: Duration(milliseconds: 500)));
@@ -138,7 +131,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
     });
   }
 
-  // 统计逻辑
   int get _totalCount {
     return _dayCounts.values.fold(0, (sum, count) => sum + count);
   }
@@ -154,20 +146,19 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
     final colorScheme = Theme.of(context).colorScheme;
     
     return Scaffold(
-      // 这里的 AppBar 也可以去掉，如果你想要极其极简
       appBar: AppBar(
         title: const Text('日常记录'),
         centerTitle: true,
-        forceMaterialTransparency: true, // 透明背景
+        forceMaterialTransparency: true,
       ),
-      body: Center( // 1. 垂直居中核心布局
+      body: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min, // 内容包裹，不占满全屏
+          mainAxisSize: MainAxisSize.min,
           children: [
             Card(
               margin: const EdgeInsets.symmetric(horizontal: 20.0),
-              elevation: 0, // 扁平化
-              color: colorScheme.surfaceContainer, // MD3 容器色
+              elevation: 0,
+              color: colorScheme.surfaceContainer,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -177,7 +168,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                   focusedDay: _focusedDay,
                   calendarFormat: _calendarFormat,
                   
-                  // 样式配置
                   headerStyle: const HeaderStyle(
                     titleCentered: true, 
                     formatButtonVisible: false,
@@ -188,7 +178,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                     weekendStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
                   ),
 
-                  // 交互回调
                   selectedDayPredicate: (day) => _getCount(day) > 0,
                   onDaySelected: _onDaySelected,
                   onDayLongPressed: _onDayLongPressed,
@@ -198,9 +187,7 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                     });
                   },
 
-                  // 2. 自定义 UI 构建器 (显示 x2, x3)
                   calendarBuilders: CalendarBuilders(
-                    // 自定义“已打卡”的样式
                     selectedBuilder: (context, date, events) {
                       int count = _getCount(date);
                       return Container(
@@ -212,7 +199,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            // 日期数字
                             Text(
                               '${date.day}',
                               style: TextStyle(
@@ -221,7 +207,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                                 fontSize: 16,
                               ),
                             ),
-                            // 右下角显示次数 (如果是 x1 就不显示，或者你想显示也可以)
                             if (count > 1)
                               Positioned(
                                 right: 8,
@@ -239,7 +224,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
                         ),
                       );
                     },
-                    // 今天的默认样式
                     todayBuilder: (context, date, events) {
                       return Container(
                         margin: const EdgeInsets.all(4.0),
@@ -258,7 +242,6 @@ class _TrackerHomePageState extends State<TrackerHomePage> {
             
             const SizedBox(height: 30),
             
-            // 3. 底部统计面板 (居中，带竖线分隔)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
               decoration: BoxDecoration(
