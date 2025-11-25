@@ -27,6 +27,11 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+      # ============ 主要是加了下面这 2 行 ============
+      - name: Fix Git Permissions
+        run: git config --global --add safe.directory '*'
+      # ===============================================
+
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
 
