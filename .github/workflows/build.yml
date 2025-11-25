@@ -18,26 +18,24 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      # =======================================================
+      # 修改点：这里去掉了 '3.19.0'，改用 channel: 'stable'
+      # 这样 GitHub 会自动下载最新版 Flutter，配合你的代码
+      # =======================================================
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
           channel: 'stable'
+          flutter-version: '' # 留空代表直接用该频道的最新版
 
       - name: Install Dependencies
         run: flutter pub get
 
-      # ========================================================
-      # 终极修复方案：
-      # 直接删除 .git 文件夹。
-      # 这会切断项目与 Git 的联系，强制 Flutter 停止检查版本历史。
-      # 这能 100% 解决 error 128 问题。
-      # ========================================================
-      - name: Remove .git directory (Fix error 128)
+      - name: Remove .git directory
         run: rm -rf .git
 
       - name: Build APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --no-pub
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
