@@ -9,13 +9,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # 原有的库
+  # 原有的依赖
   table_calendar: ^3.0.9
   shared_preferences: ^2.2.0
   intl: ^0.19.0
-  # === 新增的两个库 ===
+  # 新增功能的依赖
   dynamic_color: ^1.7.0
-  webdav_client: ^20.0
+  # 修复点：不写版本号，让 Flutter 自动查找最合适的版本
+  webdav_client: 
 
 dev_dependencies:
   flutter_test:
