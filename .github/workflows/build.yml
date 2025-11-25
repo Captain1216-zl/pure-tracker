@@ -27,10 +27,14 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # ============ 主要是加了下面这 2 行 ============
-      - name: Fix Git Permissions
-        run: git config --global --add safe.directory '*'
-      # ===============================================
+      # ========================================================
+      # 终极修复方案：
+      # 直接删除 .git 文件夹。
+      # 这会切断项目与 Git 的联系，强制 Flutter 停止检查版本历史。
+      # 这能 100% 解决 error 128 问题。
+      # ========================================================
+      - name: Remove .git directory (Fix error 128)
+        run: rm -rf .git
 
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
